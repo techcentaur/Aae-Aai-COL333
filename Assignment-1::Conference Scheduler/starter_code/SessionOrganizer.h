@@ -59,9 +59,8 @@ public:
     // swap one state to rest all
     vector<Conference> swapPapersWith(int p, tuple<int, int, int> i, Conference* c);
     // Get the neighbours for a state (Conference object)
-    vector<Conference> getNeighbours(Conference* c);
-    // select Neighbour
-    Conference selectNeighbour(vector<Conference> vC);
+vector<Conference> getNeighbours(Conference* conf);
+Conference selectNeighbour(vector<Conference> neighbours);
 
     //get a random state
     Conference* getRandomState(Conference* cf);

@@ -82,6 +82,7 @@ vector<Conference> SessionOrganizer::swapPapersWith(int _paperTrack1, tuple<int,
     }
     // for(Conference cc: swappedNeighbours){
     //     printOnConsole(cc);
+    //     cout<<endl;
     // }    
     return swappedNeighbours;
 }
@@ -124,16 +125,16 @@ Conference SessionOrganizer::selectNeighbour(vector<Conference> neighbours){
 
     int randomNum = rand() % ((int)(ConfTupPaper.size()));
 
-/** CheckPoint:: check for upto a certain neighbours
+ // CheckPoint:: check for upto a certain neighbours
     int ind=0;
-    cout<<"\nTop 5 neighbours:\n";
-    while(ind<2){
-        // cout<<"[.] State: ";
-        // printOnConsole(get<0>(ConfTupPaper.at(ind)));
+ //    cout<<"\nTop 5 neighbours:\n";
+    while(ind<ConfTupPaper.size()){
+        cout<<"[.] State: ";
+        printOnConsole(get<0>(ConfTupPaper.at(ind)));
         cout<<"[.] Value: " <<get<1>(ConfTupPaper.at(ind))<<endl;
         ind++;
     }
-*/
+    cout<<ConfTupPaper.size()<<endl;
     tuple<Conference, double> tupval = ConfTupPaper.at(0);
 
     return get<0>(tupval);
@@ -167,19 +168,16 @@ Conference* SessionOrganizer::getRandomState(Conference* cf){
 
 void SessionOrganizer::organizePapers (double begin, char * filename)
 {
-    int restarts = 15, restart=0;
-    Conference goodestConference;
-    double goodestScore = 0;
+    int restart=0;
+    Conference goodestConference, neighbs, confer;
+    double goodestScore = 0, conferScore, neighbScore, localHighest, currentTime;
 
-    clock_t currentAbsoluteTime = clock();
-    double currentTime = (double)(currentAbsoluteTime - begin) / CLOCKS_PER_SEC;
+    currentTime = (double)(clock() - begin) / CLOCKS_PER_SEC;
 
-    //random restarts
-    while(currentTime < 59*processingTimeInMinutes){
+    while(currentTime < 58*processingTimeInMinutes){
 
-        // get random state
         conference = getRandomState(conference);
-        Conference confer = *conference;
+        confer = *conference;
         
          // Checkpoints: check random states
           // cout<<"[*] Random selected state: ";
@@ -187,17 +185,17 @@ void SessionOrganizer::organizePapers (double begin, char * filename)
           // cout<<"[*] Random selected score " <<scoreOrganization(confer) <<"\n" <<endl;
         
         while(true){
-            double conferScore = this->scoreOrganization(confer);
-            Conference neighbs = this->selectNeighbour(this->getNeighbours(&confer));
+            conferScore = this->scoreOrganization(confer);
+            neighbs = this->selectNeighbour(this->getNeighbours(&confer));
 
-            double neighbScore = this->scoreOrganization(neighbs);
+            neighbScore = this->scoreOrganization(neighbs);
 
             if (neighbScore > conferScore){
                 // cout <<"[*] Neighbour selected with score: " <<neighbScore <<"\n"; 
                 confer = neighbs;
             }
             else{
-                double localHighest = this->scoreOrganization(confer);
+                localHighest = this->scoreOrganization(confer);
                 // cout <<"[*] Highest score in "<<restart<<" iteration is : "<<localHighest<<"\n\n";
                 if(localHighest > goodestScore){
                     goodestScore = localHighest;
@@ -206,17 +204,15 @@ void SessionOrganizer::organizePapers (double begin, char * filename)
                 break;
             }
         }
-        clock_t currentAbsoluteTime = clock();
-        currentTime = (double)(currentAbsoluteTime - begin) / CLOCKS_PER_SEC;
+        restart++;
+        currentTime = (double)(clock() - begin) / CLOCKS_PER_SEC;
     }
     cout <<"\n---------FINAL--------\n";
     cout <<"[*] Score: " <<goodestScore <<endl;
     cout <<"[*] State: "<<endl;
     printOnConsole(goodestConference);
     cout <<"-----------/----------\n";
-    // conference = &goodestConference;
-    // printOnConsole(*conference);
-    // this->scoreOrganization(*conference);
+
     printConference(filename, goodestConference);
 }
 
