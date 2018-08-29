@@ -1,0 +1,13 @@
+1
+Sumit Ghosh
+[*] Here is something incredible about my code - 
+
+I first used an algorithm which can be named as "Local stochastic search with random restarts" and it worked way cooler than what I have now; But the memory needed for it went from several MBs to 5GBs in a minute, and crashed my PC couple of times. I was returning the vector of neighbours (Conference objects); for number of papers as 1000, such neighbours for a single instance will go upto 300k.
+
+I tried to use destructors for freeing and deleting pointers, and also used vectors at the place of pointers for smart memory management but damn on the strange weather--it didn't work.
+
+Now, my 'cooler' code is just a 'nice' chunk of code. It works well too: yeah well, that's good.
+
+It uses hill climbing with random restarts now.
+
+Also, [*] Thanks for the starter code, it saved good amount of time.
