@@ -35,112 +35,6 @@ SessionOrganizer::SessionOrganizer ( string filename )
 }
 
 
-/** let's make these functions
-1. One that takes a state and returns all possible neighbours
-    take a conference object in first settled state
-    swap first paper to every other paper and calculate score
-    do that for all papers
-    make a tuple with (change in score, conference variable)
-    return it
-**/
-
-// deep copy Conference objects
-Conference* SessionOrganizer::deepCopyConference(Conference* confForCopy){
-    Conference* copiedConf = new Conference( confForCopy->getParallelTracks(),
-                             confForCopy->getSessionsInTrack(), confForCopy->getPapersInSession());
-
-    for ( int _i = 0; _i < confForCopy->getSessionsInTrack(); _i++){
-        for ( int _j = 0; _j < confForCopy->getParallelTracks(); _j++){
-            for ( int _k = 0; _k < confForCopy->getPapersInSession(); _k++){
-                copiedConf->setPaper(_j, _i, _k, confForCopy->getTrack(_j).getSession(_i).getPaper(_k));
-            }
-        }
-    }
-
-    return copiedConf;
-}
-
-// take input as state -> Conferenece variable
-vector<Conference> SessionOrganizer::swapPapersWith(int _paperTrack1, tuple<int, int, int> indices, Conference* _conf){
-    vector<Conference> swappedNeighbours;
-
-    for ( int _i = 0; _i < _conf->getSessionsInTrack(); _i++){
-        for ( int _j = get<1>(indices)+1; _j < _conf->getParallelTracks(); _j++){
-            for ( int _k = 0; _k < _conf->getPapersInSession(); _k++){                    
-                // CheckPoint:: check for indices replacement:
-                // cout<<get<0>(indices)<<" "<<get<1>(indices)<<" "<<get<2>(indices)<<endl;
-                // cout<<_i<<" "<<_j<<" "<<_k<<endl;
-
-                Conference* newConf = deepCopyConference(_conf);
-                int _paperTrack2 = newConf->getTrack(_j).getSession(_i).getPaper(_k);
-                newConf->setPaper(_j, _i, _k, _paperTrack1);
-                newConf->setPaper(get<1>(indices), get<0>(indices), get<2>(indices), _paperTrack2);
-                swappedNeighbours.push_back(*newConf);
-                // printOnConsole(*newConf);
-            }
-        }
-    }
-    // for(Conference cc: swappedNeighbours){
-    //     printOnConsole(cc);
-    //     cout<<endl;
-    // }    
-    return swappedNeighbours;
-}
-
-vector<Conference> SessionOrganizer::getNeighbours(Conference* conf){
-    vector<Conference> neighbours;
-    int paperTrack1 = 0;
-
-    for ( int i = 0; i < conf->getSessionsInTrack(); i++){
-        for ( int j = 0; j < conf->getParallelTracks(); j++){
-            for ( int k = 0; k < conf->getPapersInSession(); k++){
-                paperTrack1 = conf->getTrack(j).getSession(i).getPaper(k);
-                tuple<int, int, int> indices = make_tuple(i, j, k);
-                vector<Conference> swappedNeigh = swapPapersWith(paperTrack1, indices, conf);
-                neighbours.insert(neighbours.end(), swappedNeigh.begin(), swappedNeigh.end());
-            }
-        }
-    }
-    // for(Conference cc: neighbours){
-    //     printOnConsole(cc);
-    // }  
-    return neighbours;
-}
-
-/** 2. Select one neighbour based on some logic:
-select randomly from top 10% that are more than
-**/
-
-Conference SessionOrganizer::selectNeighbour(vector<Conference> neighbours){
-    vector<tuple<Conference, double>> ConfTupPaper; 
-    for(Conference v: neighbours){
-        ConfTupPaper.push_back(make_tuple(v, this->scoreOrganization(v)));
-    }
-
-    sort(begin(ConfTupPaper), end(ConfTupPaper), [](auto const &t1, auto const &t2){
-        return get<1>(t1) > get<1>(t2);
-    });
-
-    srand(time(NULL));
-
-    int randomNum = rand() % ((int)(ConfTupPaper.size()));
-
- // CheckPoint:: check for upto a certain neighbours
-    int ind=0;
- //    cout<<"\nTop 5 neighbours:\n";
-    while(ind<ConfTupPaper.size()){
-        cout<<"[.] State: ";
-        printOnConsole(get<0>(ConfTupPaper.at(ind)));
-        cout<<"[.] Value: " <<get<1>(ConfTupPaper.at(ind))<<endl;
-        ind++;
-    }
-    cout<<ConfTupPaper.size()<<endl;
-    tuple<Conference, double> tupval = ConfTupPaper.at(0);
-
-    return get<0>(tupval);
-}
-
-
 Conference* SessionOrganizer::getRandomState(Conference* cf){
     int papers = cf->getParallelTracks() * cf ->getSessionsInTrack()
             * cf->getPapersInSession();
@@ -165,56 +59,116 @@ Conference* SessionOrganizer::getRandomState(Conference* cf){
     return cf;
 }
 
+Conference* SessionOrganizer::deepCopyConference(Conference* confForCopy){
+    Conference* copiedConf = new Conference( confForCopy->getParallelTracks(),
+                             confForCopy->getSessionsInTrack(), confForCopy->getPapersInSession());
+
+    for ( int _i = 0; _i < confForCopy->getSessionsInTrack(); _i++){
+        for ( int _j = 0; _j < confForCopy->getParallelTracks(); _j++){
+            for ( int _k = 0; _k < confForCopy->getPapersInSession(); _k++){
+                copiedConf->setPaper(_j, _i, _k, confForCopy->getTrack(_j).getSession(_i).getPaper(_k));
+            }
+        }
+    }
+
+    return copiedConf;
+}
 
 void SessionOrganizer::organizePapers (double begin, char * filename)
 {
     int restart=0;
-    Conference goodestConference, neighbs, confer;
-    double goodestScore = 0, conferScore, neighbScore, localHighest, currentTime;
+    Conference conf;
+    vector<Conference> bestConf;
+    double goodestScore = 0, confScore, swapScoring, totalTime=0, startTime=0, averageTime=0;
+    int iteration=0;
+    int p = conference->getPapersInSession(); //k
+    int k = conference->getParallelTracks(); //j
+    int t = conference->getSessionsInTrack(); //i
+    int maxSwaps = min((double)(40+(.00001*p*p*k*k*t*t)), (double)100);
 
-    currentTime = (double)(clock() - begin) / CLOCKS_PER_SEC;
+    double currentTime = (clock() - begin) / (double)CLOCKS_PER_SEC;
 
-    while(currentTime < 58*processingTimeInMinutes){
+    while(currentTime < 60*processingTimeInMinutes - 5){
+        startTime = (clock() - begin) / (double) CLOCKS_PER_SEC;
 
         conference = getRandomState(conference);
-        confer = *conference;
-        
-         // Checkpoints: check random states
-          // cout<<"[*] Random selected state: ";
-          // printOnConsole(confer);
-          // cout<<"[*] Random selected score " <<scoreOrganization(confer) <<"\n" <<endl;
-        
-        while(true){
-            conferScore = this->scoreOrganization(confer);
-            neighbs = this->selectNeighbour(this->getNeighbours(&confer));
+        conf = *conference;
 
-            neighbScore = this->scoreOrganization(neighbs);
+        confScore = this->scoreOrganization(conf);
 
-            if (neighbScore > conferScore){
-                // cout <<"[*] Neighbour selected with score: " <<neighbScore <<"\n"; 
-                confer = neighbs;
-            }
-            else{
-                localHighest = this->scoreOrganization(confer);
-                // cout <<"[*] Highest score in "<<restart<<" iteration is : "<<localHighest<<"\n\n";
-                if(localHighest > goodestScore){
-                    goodestScore = localHighest;
-                    goodestConference = confer;
-                }
-                break;
+        if(confScore > goodestScore){
+            goodestScore = confScore;
+
+            Conference* conff = deepCopyConference(&conf);
+            bestConf.push_back(*conff);
+            if(bestConf.size()>1){
+                bestConf.erase(bestConf.begin());
             }
         }
-        restart++;
-        currentTime = (double)(clock() - begin) / CLOCKS_PER_SEC;
-    }
-    cout <<"\n---------FINAL--------\n";
-    cout <<"[*] Score: " <<goodestScore <<endl;
-    cout <<"[*] State: "<<endl;
-    printOnConsole(goodestConference);
-    cout <<"-----------/----------\n";
 
-    printConference(filename, goodestConference);
+        srand(time(NULL));
+        int wrongSwap = 0;
+        int stateChange = 0;
+
+        while(wrongSwap<maxSwaps){
+            tuple<int, int, int> randHost = make_tuple(rand() % t, rand() % k, rand() % p);
+            int randHostNum = conf.getTrack(get<1>(randHost)).getSession(get<0>(randHost)).getPaper(get<2>(randHost));
+            
+            tuple<int, int, int> randGuest = make_tuple(rand() % t, rand() % k, rand() % p);
+            int randGuestNum = conf.getTrack(get<1>(randGuest)).getSession(get<0>(randGuest)).getPaper(get<2>(randGuest));
+
+            conf.setPaper(get<1>(randHost), get<0>(randHost), get<2>(randHost), randGuestNum);
+            conf.setPaper(get<1>(randGuest), get<0>(randGuest), get<2>(randGuest), randHostNum);
+            swapScoring = this->scoreOrganization(conf);
+
+            if(swapScoring > confScore){
+                confScore = swapScoring;
+                stateChange++;
+                wrongSwap = 0;
+            }
+            else{
+                conf.setPaper(get<1>(randHost), get<0>(randHost), get<2>(randHost), randHostNum);
+                conf.setPaper(get<1>(randGuest), get<0>(randGuest), get<2>(randGuest), randGuestNum);
+                wrongSwap++;
+            }   
+        }
+
+        // cout <<"[!] state change: " <<stateChange <<endl;
+        if(this->scoreOrganization(conf) > goodestScore){
+            goodestScore = this->scoreOrganization(conf);
+            // cout<<"[*] Highest score in the iteration: "<<goodestScore<<endl;
+            Conference* conff = deepCopyConference(&conf);
+            bestConf.push_back(*conff);
+            if(bestConf.size()>1){
+                bestConf.erase(bestConf.begin());
+            }
+        }
+
+        iteration++;
+        currentTime = (clock() - begin) / (double)CLOCKS_PER_SEC;
+        totalTime += currentTime - startTime;
+        averageTime = totalTime / iteration;
+        // cout<<averageTime<<endl;
+
+        if(currentTime > (60*processingTimeInMinutes - 2*averageTime))
+        {
+            printConference(filename, bestConf.at(bestConf.size()-1));
+        }
+        if(currentTime > 60*processingTimeInMinutes - 1.1*averageTime -2){
+           break; 
+        }
+    }
+
+    // cout <<"\n---------FINAL--------\n";
+    // for(Conference c: bestConf){
+    //     printOnConsole(c);
+    //     cout<<this->scoreOrganization(c)<<endl;
+    // }
+    printConference(filename, bestConf.at(bestConf.size()-1));
+    // cout<<this->scoreOrganization(bestConf.at(bestConf.size()-1));
 }
+
+
 
 void SessionOrganizer::readInInputFile ( string filename )
 {
@@ -424,11 +378,9 @@ void SessionOrganizer::printConference(char * filename, Conference temp)
                 ofile<<"| ";
             }
         }
-        cout<<"\n";
         ofile<<"\n";
     }
     ofile.close();
-    // cout<<"Organization written to ";
-    // printf("%s :)\n",filename);
-
+    cout<<"Organization written to ";
+    printf("%s :)\n",filename);
 }
