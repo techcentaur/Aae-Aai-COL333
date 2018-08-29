@@ -33,6 +33,8 @@ int main ( int argc, char** argv )
 
     // Organize the papers into tracks based on similarity.
     organizer->organizePapers(begin, argv[2]);
+    double finish = (clock()-begin) / (double) CLOCKS_PER_SEC;
+    // cout<<"[*] Time Taken: "<< finish <<" seconds"<<endl;
     return 0;
 }
 

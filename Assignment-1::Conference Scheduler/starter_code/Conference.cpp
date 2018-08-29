@@ -87,19 +87,15 @@ void Conference::printConference (char * filename )
     for ( int i = 0; i < sessionsInTrack; i++ ){
         for ( int j = 0; j < parallelTracks; j++ ){
             for ( int k = 0; k < papersInSession; k++ ){
-                cout <<  tracks[j].getSession( i ).getPaper( k ) << " ";
-                ofile<< tracks[j].getSession( i ).getPaper( k ) << " ";
+                ofile<< tracks[j].getSession(i).getPaper( k )<< " ";
             }
             if ( j != parallelTracks - 1 ){
-                cout << "|";
                 ofile<<"| ";
             }
         }
-        cout<<"\n";
         ofile<<"\n";
     }
     ofile.close();
-    // cout<<"Organization written to ";
-    // printf("%s :)\n",filename);
-
+    cout<<"Organization written to ";
+    printf("%s :)\n",filename);
 }
